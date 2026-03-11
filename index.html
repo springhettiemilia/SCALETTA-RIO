@@ -6,6 +6,7 @@
     <title>SCALETTA - tRIO</title>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     
     <style>
         :root {
@@ -17,135 +18,58 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', sans-serif;
             background-color: var(--grigio-tortora);
-            margin: 0;
-            padding: 15px;
-            color: #333;
+            margin: 0; padding: 15px; color: #333;
         }
 
-        /* --- HEADER & HOME --- */
         header {
-            text-align: center;
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+            text-align: center; background: white; padding: 20px;
+            border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px;
         }
 
-        h1 {
-            font-family: 'Georgia', serif;
-            font-style: italic;
-            margin: 0;
-            color: var(--scuro);
-        }
+        h1 { font-family: 'Georgia', serif; font-style: italic; margin: 0; color: var(--scuro); }
 
-        .stats-bar {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            margin-top: 15px;
-        }
-
-        .timer-box, .total-time-box {
-            background: #f0f0f0;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 1.1em;
-        }
+        .stats-bar { display: flex; justify-content: space-around; align-items: center; margin-top: 15px; }
+        .timer-box, .total-time-box { background: #f0f0f0; padding: 10px; border-radius: 8px; font-weight: bold; }
 
         #searchBar {
-            width: 100%;
-            padding: 12px 20px;
-            margin: 10px 0 20px 0;
-            border-radius: 25px;
-            border: none;
-            box-sizing: border-box;
-            font-size: 16px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            width: 100%; padding: 12px 20px; margin: 10px 0 20px 0;
+            border-radius: 25px; border: none; box-sizing: border-box; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
         .btn {
-            background-color: var(--scuro);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 15px;
-            transition: opacity 0.2s;
+            background-color: var(--scuro); color: white; border: none;
+            padding: 12px 20px; border-radius: 8px; cursor: pointer;
         }
 
-        .btn:active { opacity: 0.8; }
-
+        /* --- STILE LISTA ORDINABILE --- */
         .song-card {
-            background: white;
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 10px;
-            display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr;
-            gap: 10px;
-            cursor: pointer;
-            align-items: center;
+            background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px;
+            display: grid; grid-template-columns: 30px 2fr 1fr 1fr 1fr;
+            gap: 10px; align-items: center; cursor: pointer;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            touch-action: none; /* Necessario per il drag su mobile */
         }
 
-        /* --- PAGINA EDITOR / TESTO --- */
+        .handle { color: #ccc; cursor: grab; font-size: 20px; }
+        .sortable-ghost { opacity: 0.4; background: #e2e2e2; }
+
+        /* --- EDITOR --- */
         #editorPage {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bianco);
-            z-index: 100;
-            overflow-y: auto;
-            padding: 20px;
-            box-sizing: border-box;
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bianco); z-index: 100; overflow-y: auto; padding: 20px; box-sizing: border-box;
         }
 
-        .input-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .input-row input {
-            flex: 1;
-            min-width: 140px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        .toolbar {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
+        .input-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+        .input-row input { flex: 1; min-width: 140px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
 
         #textContent {
-            width: 100%;
-            height: 60vh;
-            padding: 20px;
-            font-size: 18px;
-            line-height: 1.6;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-            box-sizing: border-box;
-            resize: none;
-            outline: none;
-            white-space: pre-wrap;
+            width: 100%; height: 55vh; padding: 20px; font-size: 19px;
+            border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box; resize: none; outline: none;
         }
 
-        .save-bar {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
-        }
+        .save-bar { display: flex; justify-content: space-between; margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -157,62 +81,47 @@
             <div class="timer-box">Timer: <span id="timerDisplay">00:00:00</span></div>
             <div class="total-time-box">Totale: <span id="totalDuration">0</span> min</div>
         </div>
-        <button class="btn" style="margin-top:15px; background:#444;" onclick="toggleTimer()">Avvia/Ferma Concerto</button>
+        <button class="btn" style="margin-top:15px;" onclick="toggleTimer()">Start/Stop Concerto</button>
     </header>
 
-    <input type="text" id="searchBar" placeholder="Cerca una canzone..." onkeyup="renderSongs()">
-    
-    <button class="btn" style="width: 100%; margin-bottom: 20px; font-weight: bold;" onclick="openEditor()">+ INSERISCI NUOVO BRANO</button>
+    <input type="text" id="searchBar" placeholder="Cerca..." onkeyup="renderSongs()">
+    <button class="btn" style="width: 100%; margin-bottom: 20px; font-weight: bold;" onclick="openEditor()">+ NUOVA CANZONE</button>
 
-    <div id="songList">
-        </div>
+    <div id="songList"></div>
 </div>
 
 <div id="editorPage">
-    <div style="margin-bottom: 20px;">
-        <button class="btn" onclick="closeEditor()">← Indietro</button>
-    </div>
-
-    <div class="input-row">
-        <input type="text" id="inTitolo" placeholder="Titolo della canzone">
+    <button class="btn" onclick="closeEditor()">← Indietro</button>
+    <div class="input-row" style="margin-top:20px;">
+        <input type="text" id="inTitolo" placeholder="Titolo">
         <input type="text" id="inAutore" placeholder="Autore">
-        <input type="text" id="inTonalita" placeholder="Tonalità (es. Do min)">
-        <input type="number" id="inDurata" placeholder="Durata (min)">
+        <input type="text" id="inTonalita" placeholder="Tonalità">
+        <input type="number" id="inDurata" placeholder="Minuti">
     </div>
-
-    <div class="toolbar">
-        <button class="btn" style="background:var(--blu-pastello); color:#333;" onclick="setHighlight('var(--blu-pastello)')">Evidenziatore Blu</button>
-        <button class="btn" style="background:var(--rosa-pastello); color:#333;" onclick="setHighlight('var(--rosa-pastello)')">Evidenziatore Rosa</button>
-        <button class="btn" style="background:#eee; color:#333;" onclick="setHighlight('white')">Rimuovi Colore</button>
+    <div style="margin-bottom:10px;">
+        <button class="btn" style="background:var(--blu-pastello); color:#333;" onclick="setHighlight('var(--blu-pastello)')">Blu</button>
+        <button class="btn" style="background:var(--rosa-pastello); color:#333;" onclick="setHighlight('var(--rosa-pastello)')">Rosa</button>
+        <button class="btn" style="background:#eee; color:#333;" onclick="setHighlight('white')">Reset</button>
     </div>
-
-    <textarea id="textContent" placeholder="Inserisci qui il testo della canzone..."></textarea>
-
+    <textarea id="textContent" placeholder="Testo..."></textarea>
     <div class="save-bar">
-        <button class="btn" style="background:#d9534f;" onclick="deleteSong()">Elimina Brano</button>
-        <button class="btn" style="background:#5cb85c; padding: 12px 40px;" onclick="saveSong()">SALVA MODIFICHE</button>
+        <button class="btn" style="background:#d9534f;" onclick="deleteSong()">Elimina</button>
+        <button class="btn" style="background:#5cb85c;" onclick="saveSong()">SALVA</button>
     </div>
 </div>
 
 <script>
-    // --- FIREBASE CONFIG ---
-    const firebaseConfig = {
-        databaseURL: "https://scaletta-rio-2026-default-rtdb.europe-west1.firebasedatabase.app/"
-    };
+    const firebaseConfig = { databaseURL: "https://scaletta-rio-2026-default-rtdb.europe-west1.firebasedatabase.app/" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
     let songs = [];
     let currentSongId = null;
-    let timerInterval;
-    let totalSeconds = 0;
+    let timerInterval, totalSeconds = 0;
 
-    // --- TIMER ---
     function toggleTimer() {
-        if (timerInterval) {
-            clearInterval(timerInterval);
-            timerInterval = null;
-        } else {
+        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+        else {
             timerInterval = setInterval(() => {
                 totalSeconds++;
                 let h = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
@@ -223,39 +132,58 @@
         }
     }
 
-    // --- DATABASE OPERATIONS ---
+    // Carica canzoni ordinate per il campo "order"
     function loadSongs() {
-        db.ref('songs').on('value', (snapshot) => {
+        db.ref('songs').orderByChild('order').on('value', (snapshot) => {
             const data = snapshot.val();
-            songs = data ? Object.keys(data).map(key => ({id: key, ...data[key]})) : [];
+            const tempSongs = [];
+            snapshot.forEach((child) => {
+                tempSongs.push({id: child.key, ...child.val()});
+            });
+            songs = tempSongs;
             renderSongs();
         });
     }
 
     function renderSongs() {
         const list = document.getElementById('songList');
-        const searchTerm = document.getElementById('searchBar').value.toLowerCase();
+        const search = document.getElementById('searchBar').value.toLowerCase();
         let totalMin = 0;
         list.innerHTML = '';
         
-        songs.filter(s => s.titolo.toLowerCase().includes(searchTerm) || s.autore.toLowerCase().includes(searchTerm))
-        .forEach(s => {
-            totalMin += parseInt(s.durata || 0);
-            list.innerHTML += `
-                <div class="song-card" onclick="openEditor('${s.id}')">
-                    <strong>${s.titolo.toUpperCase()}</strong>
-                    <span>${s.autore}</span>
-                    <span style="color:#d9534f; font-weight:bold;">${s.tonalita}</span>
-                    <span>${s.durata}'</span>
-                </div>
-            `;
+        songs.forEach((s) => {
+            if (s.titolo.toLowerCase().includes(search)) {
+                totalMin += parseInt(s.durata || 0);
+                list.innerHTML += `
+                    <div class="song-card" data-id="${s.id}" onclick="openEditor('${s.id}')">
+                        <div class="handle">≡</div>
+                        <strong>${s.titolo.toUpperCase()}</strong>
+                        <span>${s.autore}</span>
+                        <span style="color:#d9534f; font-weight:bold;">${s.tonalita}</span>
+                        <span>${s.durata}'</span>
+                    </div>`;
+            }
         });
         document.getElementById('totalDuration').innerText = totalMin;
+
+        // Inizializza Sortable dopo il rendering
+        new Sortable(list, {
+            handle: '.handle',
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            onEnd: function() {
+                const items = list.querySelectorAll('.song-card');
+                items.forEach((item, index) => {
+                    const id = item.getAttribute('data-id');
+                    db.ref('songs/' + id).update({ order: index });
+                });
+            }
+        });
     }
 
     function saveSong() {
         const title = document.getElementById('inTitolo').value;
-        if (!title) { alert("Inserisci almeno il titolo!"); return; }
+        if (!title) return;
 
         const songData = {
             titolo: title,
@@ -263,31 +191,26 @@
             tonalita: document.getElementById('inTonalita').value || "-",
             durata: document.getElementById('inDurata').value || 0,
             testo: document.getElementById('textContent').value,
-            bgColor: document.getElementById('textContent').style.backgroundColor || 'white'
+            bgColor: document.getElementById('textContent').style.backgroundColor || 'white',
+            order: currentSongId ? songs.find(x => x.id === currentSongId).order : songs.length
         };
 
-        if (currentSongId) {
-            db.ref('songs/' + currentSongId).set(songData);
-        } else {
-            db.ref('songs').push(songData);
-        }
+        if (currentSongId) db.ref('songs/' + currentSongId).set(songData);
+        else db.ref('songs').push(songData);
         closeEditor();
     }
 
     function deleteSong() {
-        if (currentSongId && confirm("Sei sicuro di voler eliminare questa canzone?")) {
+        if (currentSongId && confirm("Eliminare?")) {
             db.ref('songs/' + currentSongId).remove();
             closeEditor();
         }
     }
 
-    // --- NAVIGATION & UI ---
     function openEditor(id = null) {
         currentSongId = id;
         document.getElementById('homePage').style.display = 'none';
         document.getElementById('editorPage').style.display = 'block';
-        window.scrollTo(0, 0);
-
         if (id) {
             const s = songs.find(x => x.id === id);
             document.getElementById('inTitolo').value = s.titolo;
@@ -297,7 +220,6 @@
             document.getElementById('textContent').value = s.testo || "";
             document.getElementById('textContent').style.backgroundColor = s.bgColor || 'white';
         } else {
-            // Reset per nuova canzone
             document.querySelectorAll('#editorPage input').forEach(i => i.value = '');
             document.getElementById('textContent').value = "";
             document.getElementById('textContent').style.backgroundColor = 'white';
@@ -309,13 +231,9 @@
         document.getElementById('editorPage').style.display = 'none';
     }
 
-    function setHighlight(color) {
-        document.getElementById('textContent').style.backgroundColor = color;
-    }
+    function setHighlight(color) { document.getElementById('textContent').style.backgroundColor = color; }
 
-    // Inizializzazione
     loadSongs();
 </script>
-
 </body>
 </html>
