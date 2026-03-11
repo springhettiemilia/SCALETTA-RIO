@@ -17,6 +17,7 @@
             --blu-pastello: #b1dafb;
             --bianco: #fdfdfd;
             --scuro: #4a4541;
+            --yt-red: #FF0000;
         }
 
         body {
@@ -58,7 +59,6 @@
             font-size: 1.1em;
         }
 
-        /* Nuova barra strumenti per ordinamento e PDF */
         .tools-bar {
             display: flex;
             gap: 10px;
@@ -98,10 +98,7 @@
             border: 1px solid #ccc;
         }
 
-        .btn-pdf {
-            background-color: #d9534f;
-            color: white;
-        }
+        .btn-pdf { background-color: #d9534f; color: white; }
 
         .song-card {
             background: white;
@@ -109,7 +106,8 @@
             border-radius: 12px;
             margin-bottom: 10px;
             display: grid;
-            grid-template-columns: 40px 2fr 1fr 1fr 1fr;
+            /* Modificata la grid per far spazio all'icona YouTube */
+            grid-template-columns: 40px 2fr 1fr 1fr 40px 40px;
             gap: 10px;
             cursor: pointer;
             align-items: center;
@@ -121,6 +119,15 @@
             cursor: grab;
             font-size: 24px;
             text-align: center;
+        }
+
+        .yt-link {
+            color: var(--yt-red);
+            font-size: 20px;
+            text-decoration: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         #editorPage {
@@ -167,8 +174,7 @@
             display: flex;
             gap: 10px;
             margin-bottom: 15px;
-            position: sticky;
-            top: 0;
+            position: sticky; top: 0;
             background: var(--bianco);
             padding: 10px 0;
             z-index: 10;
@@ -215,6 +221,7 @@
         <input type="text" id="inAutore" placeholder="Autore">
         <input type="text" id="inTonalita" placeholder="Tonalità">
         <input type="number" id="inDurata" placeholder="Durata" step="any">
+        <input type="text" id="inYoutube" placeholder="Link YouTube (URL)">
     </div>
 
     <div class="toolbar">
@@ -247,7 +254,6 @@
         onEnd: () => saveNewOrder()
     });
 
-    // --- FUNZIONI DI ORDINAMENTO ---
     function ordinaAlfa() {
         songs.sort((a, b) => a.titolo.localeCompare(b.titolo));
         renderSongs();
@@ -258,37 +264,23 @@
         renderSongs();
     }
 
-    // --- FUNZIONE PDF ---
     function scaricaPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        
         doc.setFont("helvetica", "bold");
         doc.setFontSize(18);
         doc.text("SCALETTA - tRIO", 105, 15, { align: "center" });
-        
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.text("Generato il: " + new Date().toLocaleDateString(), 105, 22, { align: "center" });
-        
         let y = 35;
         doc.setFontSize(12);
-        
-        // Usa l'ordine attuale visualizzato
         songs.forEach((s, i) => {
             if (y > 280) { doc.addPage(); y = 20; }
-            
             doc.setFont("helvetica", "bold");
             doc.text(`${i + 1}. ${s.titolo.toUpperCase()}`, 20, y);
-            
             doc.setFont("helvetica", "normal");
             doc.text(`${s.autore} (${s.tonalita}) - ${s.durata}'`, 130, y);
-            
-            doc.setDrawColor(200);
             doc.line(20, y + 2, 190, y + 2);
             y += 10;
         });
-
         doc.save("scaletta-trio.pdf");
     }
 
@@ -296,14 +288,10 @@
         const selection = window.getSelection();
         if (!selection.rangeCount) return;
         const range = selection.getRangeAt(0);
-        if (color === 'transparent') {
-            document.execCommand('removeFormat', false, null);
-            return;
-        }
+        if (color === 'transparent') { document.execCommand('removeFormat', false, null); return; }
         const span = document.createElement('span');
         span.style.backgroundColor = color;
-        try { range.surroundContents(span); } 
-        catch (e) { document.execCommand('backColor', false, color); }
+        try { range.surroundContents(span); } catch (e) { document.execCommand('backColor', false, color); }
         selection.removeAllRanges();
     }
 
@@ -342,8 +330,22 @@
                 const card = document.createElement('div');
                 card.className = 'song-card';
                 card.setAttribute('data-id', s.id);
-                card.onclick = (e) => { if(!e.target.classList.contains('drag-handle')) openEditor(s.id); };
-                card.innerHTML = `<div class="drag-handle">☰</div><strong>${s.titolo.toUpperCase()}</strong><span>${s.autore}</span><span style="color:#d9534f; font-weight:bold;">${s.tonalita}</span><span>${d}'</span>`;
+                card.onclick = (e) => { 
+                    if(!e.target.closest('.drag-handle') && !e.target.closest('.yt-link')) openEditor(s.id); 
+                };
+
+                // Icona YouTube visibile solo se il link esiste
+                const ytIcon = s.youtube ? 
+                    `<a href="${s.youtube}" target="_blank" class="yt-link" title="Guarda su YouTube">▶️</a>` : `<span></span>`;
+
+                card.innerHTML = `
+                    <div class="drag-handle">☰</div>
+                    <strong>${s.titolo.toUpperCase()}</strong>
+                    <span>${s.autore}</span>
+                    <span style="color:#d9534f; font-weight:bold;">${s.tonalita}</span>
+                    ${ytIcon}
+                    <span>${d}'</span>
+                `;
                 list.appendChild(card);
             }
         });
@@ -351,10 +353,8 @@
     }
 
     function saveNewOrder() {
-        const currentCards = document.querySelectorAll('.song-card');
-        currentCards.forEach((card, index) => {
-            const id = card.getAttribute('data-id');
-            db.ref('songs/' + id).update({ ordine: index });
+        document.querySelectorAll('.song-card').forEach((card, index) => {
+            db.ref('songs/' + card.getAttribute('data-id')).update({ ordine: index });
         });
     }
 
@@ -366,6 +366,7 @@
             autore: document.getElementById('inAutore').value || "-",
             tonalita: document.getElementById('inTonalita').value || "-",
             durata: document.getElementById('inDurata').value.toString().replace(',', '.') || 0,
+            youtube: document.getElementById('inYoutube').value || "", // SALVATAGGIO YT
             testoHTML: document.getElementById('textContent').innerHTML,
             ordine: currentSongId ? (songs.find(x => x.id === currentSongId).ordine || 0) : songs.length
         };
@@ -384,6 +385,7 @@
             document.getElementById('inAutore').value = s.autore;
             document.getElementById('inTonalita').value = s.tonalita;
             document.getElementById('inDurata').value = s.durata;
+            document.getElementById('inYoutube').value = s.youtube || ""; // CARICA YT
             document.getElementById('textContent').innerHTML = s.testoHTML || (s.testo ? s.testo.replace(/\n/g, '<br>') : "");
         } else {
             document.querySelectorAll('#editorPage input').forEach(i => i.value = '');
@@ -407,4 +409,3 @@
 </script>
 </body>
 </html>
-
