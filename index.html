@@ -82,7 +82,6 @@
 
         .btn:active { opacity: 0.8; }
 
-        /* Stile Card con Handle per trascinamento */
         .song-card {
             background: white;
             padding: 15px;
@@ -94,7 +93,6 @@
             cursor: pointer;
             align-items: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            transition: transform 0.2s;
         }
 
         .drag-handle {
@@ -102,10 +100,8 @@
             cursor: grab;
             font-size: 24px;
             text-align: center;
-            user-select: none;
         }
 
-        /* Pagina Editor */
         #editorPage {
             display: none;
             position: fixed;
@@ -130,10 +126,8 @@
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 6px;
-            font-size: 14px;
         }
 
-        /* Editor di testo con evidenziazione parziale */
         #textContent {
             width: 100%;
             min-height: 50vh;
@@ -142,12 +136,10 @@
             line-height: 1.6;
             border: 1px solid #ccc;
             border-radius: 10px;
-            box-sizing: border-box;
-            overflow-y: auto;
-            white-space: pre-wrap;
             background: white;
             outline: none;
-            margin-bottom: 20px;
+            overflow-y: auto;
+            white-space: pre-wrap;
         }
 
         .toolbar {
@@ -167,12 +159,6 @@
             margin-top: 20px;
             padding-bottom: 40px;
         }
-
-        /* Placeholder per il div editabile */
-        #textContent:empty:before {
-            content: attr(placeholder);
-            color: #aaa;
-        }
     </style>
 </head>
 <body>
@@ -188,9 +174,7 @@
     </header>
 
     <input type="text" id="searchBar" placeholder="Cerca una canzone..." onkeyup="renderSongs()">
-    
     <button class="btn" style="width: 100%; margin-bottom: 20px; font-weight: bold;" onclick="openEditor()">+ INSERISCI NUOVO BRANO</button>
-
     <div id="songList"></div>
 </div>
 
@@ -200,31 +184,28 @@
     </div>
 
     <div class="input-row">
-        <input type="text" id="inTitolo" placeholder="Titolo della canzone">
+        <input type="text" id="inTitolo" placeholder="Titolo">
         <input type="text" id="inAutore" placeholder="Autore">
         <input type="text" id="inTonalita" placeholder="Tonalità">
-        <input type="number" id="inDurata" placeholder="Durata (es 3.5)" step="any">
+        <input type="number" id="inDurata" placeholder="Durata" step="any">
     </div>
 
     <div class="toolbar">
-        <button class="btn" style="background:var(--blu-pastello); color:#333;" onclick="highlightSelection('var(--blu-pastello)')">Evidenzia Blu</button>
-        <button class="btn" style="background:var(--rosa-pastello); color:#333;" onclick="highlightSelection('var(--rosa-pastello)')">Evidenzia Rosa</button>
-        <button class="btn" style="background:#eee; color:#333;" onclick="highlightSelection('transparent')">Rimuovi Colore</button>
+        <button class="btn" style="background:var(--blu-pastello); color:#333;" onmousedown="event.preventDefault(); applyHighlight('var(--blu-pastello)')">Evidenzia Blu</button>
+        <button class="btn" style="background:var(--rosa-pastello); color:#333;" onmousedown="event.preventDefault(); applyHighlight('var(--rosa-pastello)')">Evidenzia Rosa</button>
+        <button class="btn" style="background:#eee; color:#333;" onmousedown="event.preventDefault(); applyHighlight('transparent')">Rimuovi</button>
     </div>
 
-    <div id="textContent" contenteditable="true" placeholder="Inserisci qui il testo della canzone..."></div>
+    <div id="textContent" contenteditable="true"></div>
 
     <div class="save-bar">
-        <button class="btn" style="background:#d9534f;" onclick="deleteSong()">Elimina Brano</button>
-        <button class="btn" style="background:#5cb85c; padding: 12px 40px;" onclick="saveSong()">SALVA MODIFICHE</button>
+        <button class="btn" style="background:#d9534f;" onclick="deleteSong()">Elimina</button>
+        <button class="btn" style="background:#5cb85c; padding: 12px 40px;" onclick="saveSong()">SALVA</button>
     </div>
 </div>
 
 <script>
-    // --- FIREBASE CONFIG ---
-    const firebaseConfig = {
-        databaseURL: "https://scaletta-rio-2026-default-rtdb.europe-west1.firebasedatabase.app/"
-    };
+    const firebaseConfig = { databaseURL: "https://scaletta-rio-2026-default-rtdb.europe-west1.firebasedatabase.app/" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
@@ -233,21 +214,44 @@
     let timerInterval;
     let totalSeconds = 0;
 
-    // Inizializzazione Drag & Drop
-    const el = document.getElementById('songList');
-    const sortable = Sortable.create(el, {
+    // Gestione Ordine
+    const sortable = Sortable.create(document.getElementById('songList'), {
         animation: 150,
-        handle: '.drag-handle', // Solo trascinando l'iconcina si sposta
-        onEnd: function() {
-            saveNewOrder();
-        }
+        handle: '.drag-handle',
+        onEnd: () => saveNewOrder()
     });
 
+    // NUOVA FUNZIONE EVIDENZIATORE (Più robusta)
+    function applyHighlight(color) {
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+        
+        const range = selection.getRangeAt(0);
+        
+        // Se è "transparent", proviamo a pulire lo span esistente
+        if (color === 'transparent') {
+            document.execCommand('removeFormat', false, null);
+            return;
+        }
+
+        // Crea uno span con il background desiderato
+        const span = document.createElement('span');
+        span.style.backgroundColor = color;
+        
+        try {
+            range.surroundContents(span);
+        } catch (e) {
+            // Se la selezione attraversa altri tag HTML, surroundContents fallisce.
+            // In quel caso usiamo il metodo classico come fallback.
+            document.execCommand('backColor', false, color);
+        }
+        
+        selection.removeAllRanges(); // Deseleziona dopo aver evidenziato
+    }
+
     function toggleTimer() {
-        if (timerInterval) {
-            clearInterval(timerInterval);
-            timerInterval = null;
-        } else {
+        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } 
+        else {
             timerInterval = setInterval(() => {
                 totalSeconds++;
                 let h = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
@@ -261,13 +265,8 @@
     function loadSongs() {
         db.ref('songs').on('value', (snapshot) => {
             const data = snapshot.val();
-            if (data) {
-                songs = Object.keys(data).map(key => ({id: key, ...data[key]}));
-                // Ordina in base al campo "ordine" salvato nel DB
-                songs.sort((a, b) => (a.ordine || 0) - (b.ordine || 0));
-            } else {
-                songs = [];
-            }
+            songs = data ? Object.keys(data).map(key => ({id: key, ...data[key]})) : [];
+            songs.sort((a, b) => (a.ordine || 0) - (b.ordine || 0));
             renderSongs();
         });
     }
@@ -280,99 +279,63 @@
         
         songs.forEach((s) => {
             if (s.titolo.toLowerCase().includes(searchTerm) || s.autore.toLowerCase().includes(searchTerm)) {
-                let durataDecimale = parseFloat(String(s.durata).replace(',', '.')) || 0;
-                totalMin += durataDecimale;
-
+                let d = parseFloat(String(s.durata).replace(',', '.')) || 0;
+                totalMin += d;
                 const card = document.createElement('div');
                 card.className = 'song-card';
                 card.setAttribute('data-id', s.id);
-                // Clicca sulla card per aprire l'editor, a meno che non clicchi sul tasto trascinamento
-                card.onclick = (e) => { 
-                    if(!e.target.classList.contains('drag-handle')) openEditor(s.id); 
-                };
-
-                card.innerHTML = `
-                    <div class="drag-handle">☰</div>
-                    <strong>${s.titolo.toUpperCase()}</strong>
-                    <span>${s.autore}</span>
-                    <span style="color:#d9534f; font-weight:bold;">${s.tonalita}</span>
-                    <span>${durataDecimale}'</span>
-                `;
+                card.onclick = (e) => { if(!e.target.classList.contains('drag-handle')) openEditor(s.id); };
+                card.innerHTML = `<div class="drag-handle">☰</div><strong>${s.titolo.toUpperCase()}</strong><span>${s.autore}</span><span style="color:#d9534f; font-weight:bold;">${s.tonalita}</span><span>${d}'</span>`;
                 list.appendChild(card);
             }
         });
-        
-        let totaleFormattato = totalMin.toFixed(1).replace('.0', '').replace('.', ',');
-        document.getElementById('totalDuration').innerText = totaleFormattato;
+        document.getElementById('totalDuration').innerText = totalMin.toFixed(1).replace('.0', '').replace('.', ',');
     }
 
-    // Salva l'ordine dopo lo spostamento
     function saveNewOrder() {
-        const cards = document.querySelectorAll('.song-card');
-        cards.forEach((card, index) => {
-            const id = card.getAttribute('data-id');
-            db.ref('songs/' + id).update({ ordine: index });
+        document.querySelectorAll('.song-card').forEach((card, index) => {
+            db.ref('songs/' + card.getAttribute('data-id')).update({ ordine: index });
         });
-    }
-
-    // Funzione Evidenziatore per selezione
-    function highlightSelection(color) {
-        document.execCommand('backColor', false, color);
     }
 
     function saveSong() {
         const title = document.getElementById('inTitolo').value;
-        if (!title) { alert("Inserisci almeno il titolo!"); return; }
-
-        let durataInput = document.getElementById('inDurata').value.toString().replace(',', '.');
-
+        if (!title) return;
         const songData = {
             titolo: title,
             autore: document.getElementById('inAutore').value || "-",
             tonalita: document.getElementById('inTonalita').value || "-",
-            durata: durataInput || 0,
-            // Salviamo il contenuto HTML per mantenere le evidenziazioni parziali
+            durata: document.getElementById('inDurata').value.toString().replace(',', '.') || 0,
             testoHTML: document.getElementById('textContent').innerHTML,
-            // Mantiene l'ordine esistente o lo mette in fondo se nuovo
             ordine: currentSongId ? (songs.find(x => x.id === currentSongId).ordine || 0) : songs.length
         };
-
-        if (currentSongId) {
-            db.ref('songs/' + currentSongId).set(songData);
-        } else {
-            db.ref('songs').push(songData);
-        }
+        if (currentSongId) db.ref('songs/' + currentSongId).update(songData);
+        else db.ref('songs').push(songData);
         closeEditor();
-    }
-
-    function deleteSong() {
-        if (currentSongId && confirm("Sei sicuro di voler eliminare questa canzone?")) {
-            db.ref('songs/' + currentSongId).remove();
-            closeEditor();
-        }
     }
 
     function openEditor(id = null) {
         currentSongId = id;
         document.getElementById('homePage').style.display = 'none';
         document.getElementById('editorPage').style.display = 'block';
-        window.scrollTo(0, 0);
-
         if (id) {
             const s = songs.find(x => x.id === id);
             document.getElementById('inTitolo').value = s.titolo;
             document.getElementById('inAutore').value = s.autore;
             document.getElementById('inTonalita').value = s.tonalita;
             document.getElementById('inDurata').value = s.durata;
-            
-            // --- PROTEZIONE DATI ---
-            // Se esiste 'testoHTML' (nuovo formato) lo carica.
-            // Se esiste solo 'testo' (vecchio formato), lo carica come testo semplice.
-            // Così non perdi nulla di quello che avevi scritto.
-            document.getElementById('textContent').innerHTML = s.testoHTML || s.testo || "";
+            // Carica HTML se esiste, altrimenti il vecchio testo, altrimenti vuoto
+            document.getElementById('textContent').innerHTML = s.testoHTML || (s.testo ? s.testo.replace(/\n/g, '<br>') : "");
         } else {
             document.querySelectorAll('#editorPage input').forEach(i => i.value = '');
             document.getElementById('textContent').innerHTML = "";
+        }
+    }
+
+    function deleteSong() {
+        if (currentSongId && confirm("Eliminare?")) {
+            db.ref('songs/' + currentSongId).remove();
+            closeEditor();
         }
     }
 
@@ -383,11 +346,5 @@
 
     loadSongs();
 </script>
-
 </body>
 </html>
-
-
-
-
-
