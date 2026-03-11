@@ -6,6 +6,7 @@
     <title>SCALETTA - tRIO</title>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     
     <style>
         :root {
@@ -79,18 +80,21 @@
 
         .btn:active { opacity: 0.8; }
 
+        /* Stile per il trascinamento */
         .song-card {
             background: white;
             padding: 15px;
             border-radius: 12px;
             margin-bottom: 10px;
             display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr;
+            grid-template-columns: 30px 2fr 1fr 1fr 1fr;
             gap: 10px;
-            cursor: pointer;
+            cursor: grab;
             align-items: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
+        
+        .drag-handle { color: #ccc; cursor: grab; font-size: 20px; }
 
         #editorPage {
             display: none;
@@ -119,30 +123,38 @@
             font-size: 14px;
         }
 
-        .toolbar {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
+        /* Editor di testo ricco */
         #textContent {
             width: 100%;
-            height: 60vh;
+            min-height: 60vh;
             padding: 20px;
             font-size: 18px;
             line-height: 1.6;
             border: 1px solid #ccc;
             border-radius: 10px;
             box-sizing: border-box;
-            resize: none;
-            outline: none;
+            overflow-y: auto;
             white-space: pre-wrap;
+            background: white;
+            outline: none;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            position: sticky;
+            top: 0;
+            background: var(--bianco);
+            padding: 10px 0;
+            z-index: 5;
         }
 
         .save-bar {
             display: flex;
             justify-content: space-between;
             margin-top: 20px;
+            padding-bottom: 40px;
         }
     </style>
 </head>
@@ -173,17 +185,17 @@
     <div class="input-row">
         <input type="text" id="inTitolo" placeholder="Titolo della canzone">
         <input type="text" id="inAutore" placeholder="Autore">
-        <input type="text" id="inTonalita" placeholder="Tonalità (es. Do min)">
-        <input type="number" id="inDurata" placeholder="Durata (es. 3.5)" step="any">
+        <input type="text" id="inTonalita" placeholder="Tonalità">
+        <input type="number" id="inDurata" placeholder="Durata (es 3.5)" step="any">
     </div>
 
     <div class="toolbar">
-        <button class="btn" style="background:var(--blu-pastello); color:#333;" onclick="setHighlight('var(--blu-pastello)')">Evidenziatore Blu</button>
-        <button class="btn" style="background:var(--rosa-pastello); color:#333;" onclick="setHighlight('var(--rosa-pastello)')">Evidenziatore Rosa</button>
-        <button class="btn" style="background:#eee; color:#333;" onclick="setHighlight('white')">Rimuovi Colore</button>
+        <button class="btn" style="background:var(--blu-pastello); color:#333;" onclick="highlightSelection('var(--blu-pastello)')">Evidenzia Blu</button>
+        <button class="btn" style="background:var(--rosa-pastello); color:#333;" onclick="highlightSelection('var(--rosa-pastello)')">Evidenzia Rosa</button>
+        <button class="btn" style="background:#eee; color:#333;" onclick="highlightSelection('transparent')">Rimuovi</button>
     </div>
 
-    <textarea id="textContent" placeholder="Inserisci qui il testo della canzone..."></textarea>
+    <div id="textContent" contenteditable="true" placeholder="Scrivi il testo qui..."></div>
 
     <div class="save-bar">
         <button class="btn" style="background:#d9534f;" onclick="deleteSong()">Elimina Brano</button>
@@ -192,7 +204,6 @@
 </div>
 
 <script>
-    // --- FIREBASE CONFIG ---
     const firebaseConfig = {
         databaseURL: "https://scaletta-rio-2026-default-rtdb.europe-west1.firebasedatabase.app/"
     };
@@ -203,6 +214,16 @@
     let currentSongId = null;
     let timerInterval;
     let totalSeconds = 0;
+
+    // Inizializza Sortable per il drag and drop
+    const el = document.getElementById('songList');
+    const sortable = Sortable.create(el, {
+        animation: 150,
+        handle: '.drag-handle',
+        onEnd: function() {
+            saveNewOrder();
+        }
+    });
 
     function toggleTimer() {
         if (timerInterval) {
@@ -222,44 +243,68 @@
     function loadSongs() {
         db.ref('songs').on('value', (snapshot) => {
             const data = snapshot.val();
-            songs = data ? Object.keys(data).map(key => ({id: key, ...data[key]})) : [];
+            if (data) {
+                songs = Object.keys(data).map(key => ({id: key, ...data[key]}));
+                // Ordina le canzoni in base al campo "ordine"
+                songs.sort((a, b) => (a.ordine || 0) - (b.ordine || 0));
+            } else {
+                songs = [];
+            }
             renderSongs();
         });
     }
 
-    // MODIFICA 2: Funzione render rifatta per gestire i decimali correttamente
     function renderSongs() {
         const list = document.getElementById('songList');
         const searchTerm = document.getElementById('searchBar').value.toLowerCase();
         let totalMin = 0;
         list.innerHTML = '';
         
-        songs.filter(s => s.titolo.toLowerCase().includes(searchTerm) || s.autore.toLowerCase().includes(searchTerm))
-        .forEach(s => {
-            // Converte stringa in numero decimale, gestendo sia virgola che punto
-            let durataDecimale = parseFloat(String(s.durata).replace(',', '.')) || 0;
-            totalMin += durataDecimale;
+        songs.forEach((s) => {
+            if (s.titolo.toLowerCase().includes(searchTerm) || s.autore.toLowerCase().includes(searchTerm)) {
+                let durataDecimale = parseFloat(String(s.durata).replace(',', '.')) || 0;
+                totalMin += durataDecimale;
 
-            list.innerHTML += `
-                <div class="song-card" onclick="openEditor('${s.id}')">
+                const card = document.createElement('div');
+                card.className = 'song-card';
+                card.setAttribute('data-id', s.id);
+                card.onclick = (e) => { 
+                    if(e.target.className !== 'drag-handle') openEditor(s.id); 
+                };
+
+                card.innerHTML = `
+                    <div class="drag-handle">☰</div>
                     <strong>${s.titolo.toUpperCase()}</strong>
                     <span>${s.autore}</span>
                     <span style="color:#d9534f; font-weight:bold;">${s.tonalita}</span>
                     <span>${durataDecimale}'</span>
-                </div>
-            `;
+                `;
+                list.appendChild(card);
+            }
         });
         
-        // Formatta il totale finale: toglie .0 se intero, usa la virgola per estetica
         let totaleFormattato = totalMin.toFixed(1).replace('.0', '').replace('.', ',');
         document.getElementById('totalDuration').innerText = totaleFormattato;
+    }
+
+    // Salva l'ordine dopo il trascinamento
+    function saveNewOrder() {
+        const cards = document.querySelectorAll('.song-card');
+        cards.forEach((card, index) => {
+            const id = card.getAttribute('data-id');
+            db.ref('songs/' + id).update({ ordine: index });
+        });
+    }
+
+    // Funzione per evidenziare SOLO il testo selezionato
+    function highlightSelection(color) {
+        document.execCommand('backColor', false, color);
     }
 
     function saveSong() {
         const title = document.getElementById('inTitolo').value;
         if (!title) { alert("Inserisci almeno il titolo!"); return; }
 
-        // MODIFICA 3: Assicura che il valore salvato usi il punto per la matematica
         let durataInput = document.getElementById('inDurata').value.toString().replace(',', '.');
 
         const songData = {
@@ -267,8 +312,8 @@
             autore: document.getElementById('inAutore').value || "-",
             tonalita: document.getElementById('inTonalita').value || "-",
             durata: durataInput || 0,
-            testo: document.getElementById('textContent').value,
-            bgColor: document.getElementById('textContent').style.backgroundColor || 'white'
+            testoHTML: document.getElementById('textContent').innerHTML, // Salviamo l'HTML per mantenere l'evidenziazione
+            ordine: currentSongId ? songs.find(x => x.id === currentSongId).ordine : songs.length
         };
 
         if (currentSongId) {
@@ -298,22 +343,16 @@
             document.getElementById('inAutore').value = s.autore;
             document.getElementById('inTonalita').value = s.tonalita;
             document.getElementById('inDurata').value = s.durata;
-            document.getElementById('textContent').value = s.testo || "";
-            document.getElementById('textContent').style.backgroundColor = s.bgColor || 'white';
+            document.getElementById('textContent').innerHTML = s.testoHTML || "";
         } else {
             document.querySelectorAll('#editorPage input').forEach(i => i.value = '');
-            document.getElementById('textContent').value = "";
-            document.getElementById('textContent').style.backgroundColor = 'white';
+            document.getElementById('textContent').innerHTML = "";
         }
     }
 
     function closeEditor() {
         document.getElementById('homePage').style.display = 'block';
         document.getElementById('editorPage').style.display = 'none';
-    }
-
-    function setHighlight(color) {
-        document.getElementById('textContent').style.backgroundColor = color;
     }
 
     loadSongs();
