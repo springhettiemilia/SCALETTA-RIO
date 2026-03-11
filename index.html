@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SCALETTA - tRIO</title>
+    
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
+    
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     
     <style>
@@ -80,22 +82,30 @@
 
         .btn:active { opacity: 0.8; }
 
-        /* Stile per il trascinamento */
+        /* Stile Card con Handle per trascinamento */
         .song-card {
             background: white;
             padding: 15px;
             border-radius: 12px;
             margin-bottom: 10px;
             display: grid;
-            grid-template-columns: 30px 2fr 1fr 1fr 1fr;
+            grid-template-columns: 40px 2fr 1fr 1fr 1fr;
             gap: 10px;
-            cursor: grab;
+            cursor: pointer;
             align-items: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
         }
-        
-        .drag-handle { color: #ccc; cursor: grab; font-size: 20px; }
 
+        .drag-handle {
+            color: #ccc;
+            cursor: grab;
+            font-size: 24px;
+            text-align: center;
+            user-select: none;
+        }
+
+        /* Pagina Editor */
         #editorPage {
             display: none;
             position: fixed;
@@ -123,10 +133,10 @@
             font-size: 14px;
         }
 
-        /* Editor di testo ricco */
+        /* Editor di testo con evidenziazione parziale */
         #textContent {
             width: 100%;
-            min-height: 60vh;
+            min-height: 50vh;
             padding: 20px;
             font-size: 18px;
             line-height: 1.6;
@@ -137,6 +147,7 @@
             white-space: pre-wrap;
             background: white;
             outline: none;
+            margin-bottom: 20px;
         }
 
         .toolbar {
@@ -147,7 +158,7 @@
             top: 0;
             background: var(--bianco);
             padding: 10px 0;
-            z-index: 5;
+            z-index: 10;
         }
 
         .save-bar {
@@ -155,6 +166,12 @@
             justify-content: space-between;
             margin-top: 20px;
             padding-bottom: 40px;
+        }
+
+        /* Placeholder per il div editabile */
+        #textContent:empty:before {
+            content: attr(placeholder);
+            color: #aaa;
         }
     </style>
 </head>
@@ -192,10 +209,10 @@
     <div class="toolbar">
         <button class="btn" style="background:var(--blu-pastello); color:#333;" onclick="highlightSelection('var(--blu-pastello)')">Evidenzia Blu</button>
         <button class="btn" style="background:var(--rosa-pastello); color:#333;" onclick="highlightSelection('var(--rosa-pastello)')">Evidenzia Rosa</button>
-        <button class="btn" style="background:#eee; color:#333;" onclick="highlightSelection('transparent')">Rimuovi</button>
+        <button class="btn" style="background:#eee; color:#333;" onclick="highlightSelection('transparent')">Rimuovi Colore</button>
     </div>
 
-    <div id="textContent" contenteditable="true" placeholder="Scrivi il testo qui..."></div>
+    <div id="textContent" contenteditable="true" placeholder="Inserisci qui il testo della canzone..."></div>
 
     <div class="save-bar">
         <button class="btn" style="background:#d9534f;" onclick="deleteSong()">Elimina Brano</button>
@@ -204,6 +221,7 @@
 </div>
 
 <script>
+    // --- FIREBASE CONFIG ---
     const firebaseConfig = {
         databaseURL: "https://scaletta-rio-2026-default-rtdb.europe-west1.firebasedatabase.app/"
     };
@@ -215,11 +233,11 @@
     let timerInterval;
     let totalSeconds = 0;
 
-    // Inizializza Sortable per il drag and drop
+    // Inizializzazione Drag & Drop
     const el = document.getElementById('songList');
     const sortable = Sortable.create(el, {
         animation: 150,
-        handle: '.drag-handle',
+        handle: '.drag-handle', // Solo trascinando l'iconcina si sposta
         onEnd: function() {
             saveNewOrder();
         }
@@ -245,7 +263,7 @@
             const data = snapshot.val();
             if (data) {
                 songs = Object.keys(data).map(key => ({id: key, ...data[key]}));
-                // Ordina le canzoni in base al campo "ordine"
+                // Ordina in base al campo "ordine" salvato nel DB
                 songs.sort((a, b) => (a.ordine || 0) - (b.ordine || 0));
             } else {
                 songs = [];
@@ -268,8 +286,9 @@
                 const card = document.createElement('div');
                 card.className = 'song-card';
                 card.setAttribute('data-id', s.id);
+                // Clicca sulla card per aprire l'editor, a meno che non clicchi sul tasto trascinamento
                 card.onclick = (e) => { 
-                    if(e.target.className !== 'drag-handle') openEditor(s.id); 
+                    if(!e.target.classList.contains('drag-handle')) openEditor(s.id); 
                 };
 
                 card.innerHTML = `
@@ -287,7 +306,7 @@
         document.getElementById('totalDuration').innerText = totaleFormattato;
     }
 
-    // Salva l'ordine dopo il trascinamento
+    // Salva l'ordine dopo lo spostamento
     function saveNewOrder() {
         const cards = document.querySelectorAll('.song-card');
         cards.forEach((card, index) => {
@@ -296,7 +315,7 @@
         });
     }
 
-    // Funzione per evidenziare SOLO il testo selezionato
+    // Funzione Evidenziatore per selezione
     function highlightSelection(color) {
         document.execCommand('backColor', false, color);
     }
@@ -312,8 +331,10 @@
             autore: document.getElementById('inAutore').value || "-",
             tonalita: document.getElementById('inTonalita').value || "-",
             durata: durataInput || 0,
-            testoHTML: document.getElementById('textContent').innerHTML, // Salviamo l'HTML per mantenere l'evidenziazione
-            ordine: currentSongId ? songs.find(x => x.id === currentSongId).ordine : songs.length
+            // Salviamo il contenuto HTML per mantenere le evidenziazioni parziali
+            testoHTML: document.getElementById('textContent').innerHTML,
+            // Mantiene l'ordine esistente o lo mette in fondo se nuovo
+            ordine: currentSongId ? (songs.find(x => x.id === currentSongId).ordine || 0) : songs.length
         };
 
         if (currentSongId) {
@@ -343,7 +364,12 @@
             document.getElementById('inAutore').value = s.autore;
             document.getElementById('inTonalita').value = s.tonalita;
             document.getElementById('inDurata').value = s.durata;
-            document.getElementById('textContent').innerHTML = s.testoHTML || "";
+            
+            // --- PROTEZIONE DATI ---
+            // Se esiste 'testoHTML' (nuovo formato) lo carica.
+            // Se esiste solo 'testo' (vecchio formato), lo carica come testo semplice.
+            // Così non perdi nulla di quello che avevi scritto.
+            document.getElementById('textContent').innerHTML = s.testoHTML || s.testo || "";
         } else {
             document.querySelectorAll('#editorPage input').forEach(i => i.value = '');
             document.getElementById('textContent').innerHTML = "";
@@ -360,6 +386,7 @@
 
 </body>
 </html>
+
 
 
 
