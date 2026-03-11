@@ -198,7 +198,7 @@
             titolo: title,
             autore: document.getElementById('inAutore').value || "-",
             tonalita: document.getElementById('inTonalita').value || "-",
-            durata: document.getElementById('inDurata').value || 0,
+            durata: document.getElementById('inDurata').value.replace(',', '.') || 0,
             testo: document.getElementById('textContent').value,
             bgColor: document.getElementById('textContent').style.backgroundColor || 'white',
             order: currentSongId ? songs.find(x => x.id === currentSongId).order : songs.length
@@ -246,5 +246,6 @@
 </script>
 </body>
 </html>
+
 
 
