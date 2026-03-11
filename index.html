@@ -146,26 +146,35 @@
     }
 
     function renderSongs() {
-        const list = document.getElementById('songList');
-        const search = document.getElementById('searchBar').value.toLowerCase();
-        let totalMin = 0;
-        list.innerHTML = '';
-        
-        songs.forEach((s) => {
-            if (s.titolo.toLowerCase().includes(search)) {
-                totalMin += parseInt(s.durata || 0);
-                list.innerHTML += `
-                    <div class="song-card" data-id="${s.id}" onclick="openEditor('${s.id}')">
-                        <div class="handle">≡</div>
-                        <strong>${s.titolo.toUpperCase()}</strong>
-                        <span>${s.autore}</span>
-                        <span style="color:#d9534f; font-weight:bold;">${s.tonalita}</span>
-                        <span>${s.durata}'</span>
-                    </div>`;
-            }
-        });
-        document.getElementById('totalDuration').innerText = totalMin;
+    const list = document.getElementById('songList');
+    const search = document.getElementById('searchBar').value.toLowerCase();
+    let totalMin = 0;
+    list.innerHTML = '';
 
+    songs.forEach((s) => {
+        if (s.titolo.toLowerCase().includes(search)) {
+            // TRUCCO: parseFloat legge i decimali, .replace trasforma l'eventuale virgola in punto
+            let durataDecimale = parseFloat(String(s.durata).replace(',', '.')) || 0;
+            totalMin += durataDecimale;
+
+            list.innerHTML += `
+                <div class="song-card" data-id="${s.id}" onclick="openEditor('${s.id}')">
+                    <div class="handle"></div>
+                    <strong>${s.titolo.toUpperCase()}</strong>
+                    <span>${s.autore}</span>
+                    <span style="color:#d9534f; font-weight:bold;">${s.tonalita}</span>
+                    <span>${durataDecimale}'</span>
+                </div>`;
+        }
+    });
+
+    // Mostra il totale arrotondato a un decimale (es. 10.5)
+    // .replace('.', ',') serve se vuoi vedere la VIRGOLA nel totale finale
+    document.getElementById('totalDuration').innerText = totalMin.toFixed(1).replace('.0', '').replace('.', ',');
+    
+    // Inizializza Sortable dopo il rendering (se lo usi)
+    new Sortable(list, { /* tue opzioni */ });
+}
         // Inizializza Sortable dopo il rendering
         new Sortable(list, {
             handle: '.handle',
@@ -237,4 +246,5 @@
 </script>
 </body>
 </html>
+
 
