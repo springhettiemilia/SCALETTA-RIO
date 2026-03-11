@@ -86,6 +86,10 @@
             cursor: pointer;
             font-size: 15px;
             transition: opacity 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .btn:active { opacity: 0.8; }
@@ -106,7 +110,6 @@
             border-radius: 12px;
             margin-bottom: 10px;
             display: grid;
-            /* Modificata la grid per far spazio all'icona YouTube */
             grid-template-columns: 40px 2fr 1fr 1fr 40px 40px;
             gap: 10px;
             cursor: pointer;
@@ -212,8 +215,11 @@
 </div>
 
 <div id="editorPage">
-    <div style="margin-bottom: 20px;">
+    <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
         <button class="btn" onclick="closeEditor()">← Indietro</button>
+        <a id="editorYtBtn" href="#" target="_blank" class="btn" style="background: var(--yt-red); display: none;">
+            Guarda su YouTube ▶️
+        </a>
     </div>
 
     <div class="input-row">
@@ -334,7 +340,6 @@
                     if(!e.target.closest('.drag-handle') && !e.target.closest('.yt-link')) openEditor(s.id); 
                 };
 
-                // Icona YouTube visibile solo se il link esiste
                 const ytIcon = s.youtube ? 
                     `<a href="${s.youtube}" target="_blank" class="yt-link" title="Guarda su YouTube">▶️</a>` : `<span></span>`;
 
@@ -366,7 +371,7 @@
             autore: document.getElementById('inAutore').value || "-",
             tonalita: document.getElementById('inTonalita').value || "-",
             durata: document.getElementById('inDurata').value.toString().replace(',', '.') || 0,
-            youtube: document.getElementById('inYoutube').value || "", // SALVATAGGIO YT
+            youtube: document.getElementById('inYoutube').value || "",
             testoHTML: document.getElementById('textContent').innerHTML,
             ordine: currentSongId ? (songs.find(x => x.id === currentSongId).ordine || 0) : songs.length
         };
@@ -379,17 +384,29 @@
         currentSongId = id;
         document.getElementById('homePage').style.display = 'none';
         document.getElementById('editorPage').style.display = 'block';
+        
+        const ytBtn = document.getElementById('editorYtBtn');
+
         if (id) {
             const s = songs.find(x => x.id === id);
             document.getElementById('inTitolo').value = s.titolo;
             document.getElementById('inAutore').value = s.autore;
             document.getElementById('inTonalita').value = s.tonalita;
             document.getElementById('inDurata').value = s.durata;
-            document.getElementById('inYoutube').value = s.youtube || ""; // CARICA YT
+            document.getElementById('inYoutube').value = s.youtube || "";
             document.getElementById('textContent').innerHTML = s.testoHTML || (s.testo ? s.testo.replace(/\n/g, '<br>') : "");
+            
+            // Gestione tasto YouTube nell'editor
+            if(s.youtube) {
+                ytBtn.href = s.youtube;
+                ytBtn.style.display = 'inline-flex';
+            } else {
+                ytBtn.style.display = 'none';
+            }
         } else {
             document.querySelectorAll('#editorPage input').forEach(i => i.value = '');
             document.getElementById('textContent').innerHTML = "";
+            ytBtn.style.display = 'none';
         }
     }
 
