@@ -3,348 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SCALETTA - tRIO</title>
-    
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    
+    <title>Gestione Brani Musicali</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-        :root {
-            --grigio-tortora: #8e8781;
-            --rosa-pastello: #f4cfdf;
-            --blu-pastello: #b1dafb;
-            --bianco: #fdfdfd;
-            --scuro: #4a4541;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--grigio-tortora);
-            margin: 0;
-            padding: 15px;
-            color: #333;
-        }
-
-        header {
-            text-align: center;
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-
-        h1 {
-            font-family: 'Georgia', serif;
-            font-style: italic;
-            margin: 0;
-            color: var(--scuro);
-        }
-
-        .stats-bar {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            margin-top: 15px;
-        }
-
-        .timer-box, .total-time-box {
-            background: #f0f0f0;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 1.1em;
-        }
-
-        #searchBar {
-            width: 100%;
-            padding: 12px 20px;
-            margin: 10px 0 20px 0;
-            border-radius: 25px;
-            border: none;
-            box-sizing: border-box;
-            font-size: 16px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-
-        .btn {
-            background-color: var(--scuro);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 15px;
-            transition: opacity 0.2s;
-        }
-
-        .btn:active { opacity: 0.8; }
-
-        .song-card {
-            background: white;
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 10px;
-            display: grid;
-            grid-template-columns: 40px 2fr 1fr 1fr 1fr;
-            gap: 10px;
-            cursor: pointer;
-            align-items: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-
-        .drag-handle {
-            color: #ccc;
-            cursor: grab;
-            font-size: 24px;
-            text-align: center;
-        }
-
-        #editorPage {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bianco);
-            z-index: 100;
-            overflow-y: auto;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-
-        .input-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .input-row input {
-            flex: 1;
-            min-width: 140px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-        }
-
-        #textContent {
-            width: 100%;
-            min-height: 50vh;
-            padding: 20px;
-            font-size: 18px;
-            line-height: 1.6;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-            background: white;
-            outline: none;
-            overflow-y: auto;
-            white-space: pre-wrap;
-        }
-
-        .toolbar {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            position: sticky;
-            top: 0;
-            background: var(--bianco);
-            padding: 10px 0;
-            z-index: 10;
-        }
-
-        .save-bar {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
-            padding-bottom: 40px;
-        }
+        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; line-height: 1.6; }
+        .controls { background: #f4f4f4; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        input, select, button { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        button { cursor: pointer; background-color: #007bff; color: white; border: none; }
+        button:hover { background-color: #0056b3; }
+        .btn-pdf { background-color: #dc3545; }
+        .btn-pdf:hover { background-color: #a71d2a; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #eee; }
+        tr:nth-child(even) { background-color: #fafafa; }
     </style>
 </head>
 <body>
 
-<div id="homePage">
-    <header>
-        <h1>SCALETTA - tRIO</h1>
-        <div class="stats-bar">
-            <div class="timer-box">Timer: <span id="timerDisplay">00:00:00</span></div>
-            <div class="total-time-box">Totale: <span id="totalDuration">0</span> min</div>
-        </div>
-        <button class="btn" style="margin-top:15px; background:#444;" onclick="toggleTimer()">Avvia/Ferma Concerto</button>
-    </header>
+    <h2>I Miei Brani</h2>
 
-    <input type="text" id="searchBar" placeholder="Cerca una canzone..." onkeyup="renderSongs()">
-    <button class="btn" style="width: 100%; margin-bottom: 20px; font-weight: bold;" onclick="openEditor()">+ INSERISCI NUOVO BRANO</button>
-    <div id="songList"></div>
-</div>
-
-<div id="editorPage">
-    <div style="margin-bottom: 20px;">
-        <button class="btn" onclick="closeEditor()">← Indietro</button>
+    <div class="controls">
+        <input type="text" id="titleInput" placeholder="Titolo brano">
+        <input type="text" id="authorInput" placeholder="Autore">
+        <button onclick="addSong()">Aggiungi</button>
     </div>
 
-    <div class="input-row">
-        <input type="text" id="inTitolo" placeholder="Titolo">
-        <input type="text" id="inAutore" placeholder="Autore">
-        <input type="text" id="inTonalita" placeholder="Tonalità">
-        <input type="number" id="inDurata" placeholder="Durata" step="any">
+    <div class="controls">
+        <label>Ordina per:</label>
+        <select id="sortOrder" onchange="sortAndRender()">
+            <option value="none">Data inserimento</option>
+            <option value="title">Titolo (A-Z)</option>
+            <option value="author">Autore (A-Z)</option>
+        </select>
+        <button class="btn-pdf" onclick="downloadPDF()">Scarica PDF</button>
     </div>
 
-    <div class="toolbar">
-        <button class="btn" style="background:var(--blu-pastello); color:#333;" onmousedown="event.preventDefault(); applyHighlight('var(--blu-pastello)')">Evidenzia Blu</button>
-        <button class="btn" style="background:var(--rosa-pastello); color:#333;" onmousedown="event.preventDefault(); applyHighlight('var(--rosa-pastello)')">Evidenzia Rosa</button>
-        <button class="btn" style="background:#eee; color:#333;" onmousedown="event.preventDefault(); applyHighlight('transparent')">Rimuovi</button>
-    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Titolo</th>
+                <th>Autore</th>
+                <th>Azioni</th>
+            </tr>
+        </thead>
+        <tbody id="playlistBody"></tbody>
+    </table>
 
-    <div id="textContent" contenteditable="true"></div>
+    <script>
+        // Carica i dati dal localStorage all'avvio o inizializza array vuoto
+        let playlist = JSON.parse(localStorage.getItem('myPlaylist')) || [];
 
-    <div class="save-bar">
-        <button class="btn" style="background:#d9534f;" onclick="deleteSong()">Elimina</button>
-        <button class="btn" style="background:#5cb85c; padding: 12px 40px;" onclick="saveSong()">SALVA</button>
-    </div>
-</div>
+        // Funzione per aggiungere un brano
+        function addSong() {
+            const title = document.getElementById('titleInput').value;
+            const author = document.getElementById('authorInput').value;
 
-<script>
-    const firebaseConfig = { databaseURL: "https://scaletta-rio-2026-default-rtdb.europe-west1.firebasedatabase.app/" };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    let songs = [];
-    let currentSongId = null;
-    let timerInterval;
-    let totalSeconds = 0;
-
-    // Gestione Ordine
-    const sortable = Sortable.create(document.getElementById('songList'), {
-        animation: 150,
-        handle: '.drag-handle',
-        onEnd: () => saveNewOrder()
-    });
-
-    // NUOVA FUNZIONE EVIDENZIATORE (Più robusta)
-    function applyHighlight(color) {
-        const selection = window.getSelection();
-        if (!selection.rangeCount) return;
-        
-        const range = selection.getRangeAt(0);
-        
-        // Se è "transparent", proviamo a pulire lo span esistente
-        if (color === 'transparent') {
-            document.execCommand('removeFormat', false, null);
-            return;
-        }
-
-        // Crea uno span con il background desiderato
-        const span = document.createElement('span');
-        span.style.backgroundColor = color;
-        
-        try {
-            range.surroundContents(span);
-        } catch (e) {
-            // Se la selezione attraversa altri tag HTML, surroundContents fallisce.
-            // In quel caso usiamo il metodo classico come fallback.
-            document.execCommand('backColor', false, color);
-        }
-        
-        selection.removeAllRanges(); // Deseleziona dopo aver evidenziato
-    }
-
-    function toggleTimer() {
-        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } 
-        else {
-            timerInterval = setInterval(() => {
-                totalSeconds++;
-                let h = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
-                let m = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
-                let s = (totalSeconds % 60).toString().padStart(2, '0');
-                document.getElementById('timerDisplay').innerText = `${h}:${m}:${s}`;
-            }, 1000);
-        }
-    }
-
-    function loadSongs() {
-        db.ref('songs').on('value', (snapshot) => {
-            const data = snapshot.val();
-            songs = data ? Object.keys(data).map(key => ({id: key, ...data[key]})) : [];
-            songs.sort((a, b) => (a.ordine || 0) - (b.ordine || 0));
-            renderSongs();
-        });
-    }
-
-    function renderSongs() {
-        const list = document.getElementById('songList');
-        const searchTerm = document.getElementById('searchBar').value.toLowerCase();
-        let totalMin = 0;
-        list.innerHTML = '';
-        
-        songs.forEach((s) => {
-            if (s.titolo.toLowerCase().includes(searchTerm) || s.autore.toLowerCase().includes(searchTerm)) {
-                let d = parseFloat(String(s.durata).replace(',', '.')) || 0;
-                totalMin += d;
-                const card = document.createElement('div');
-                card.className = 'song-card';
-                card.setAttribute('data-id', s.id);
-                card.onclick = (e) => { if(!e.target.classList.contains('drag-handle')) openEditor(s.id); };
-                card.innerHTML = `<div class="drag-handle">☰</div><strong>${s.titolo.toUpperCase()}</strong><span>${s.autore}</span><span style="color:#d9534f; font-weight:bold;">${s.tonalita}</span><span>${d}'</span>`;
-                list.appendChild(card);
+            if (title === '' || author === '') {
+                alert("Inserisci sia titolo che autore!");
+                return;
             }
-        });
-        document.getElementById('totalDuration').innerText = totalMin.toFixed(1).replace('.0', '').replace('.', ',');
-    }
 
-    function saveNewOrder() {
-        document.querySelectorAll('.song-card').forEach((card, index) => {
-            db.ref('songs/' + card.getAttribute('data-id')).update({ ordine: index });
-        });
-    }
+            const newSong = {
+                id: Date.now(),
+                title: title,
+                author: author,
+                dateAdded: new Date()
+            };
 
-    function saveSong() {
-        const title = document.getElementById('inTitolo').value;
-        if (!title) return;
-        const songData = {
-            titolo: title,
-            autore: document.getElementById('inAutore').value || "-",
-            tonalita: document.getElementById('inTonalita').value || "-",
-            durata: document.getElementById('inDurata').value.toString().replace(',', '.') || 0,
-            testoHTML: document.getElementById('textContent').innerHTML,
-            ordine: currentSongId ? (songs.find(x => x.id === currentSongId).ordine || 0) : songs.length
-        };
-        if (currentSongId) db.ref('songs/' + currentSongId).update(songData);
-        else db.ref('songs').push(songData);
-        closeEditor();
-    }
-
-    function openEditor(id = null) {
-        currentSongId = id;
-        document.getElementById('homePage').style.display = 'none';
-        document.getElementById('editorPage').style.display = 'block';
-        if (id) {
-            const s = songs.find(x => x.id === id);
-            document.getElementById('inTitolo').value = s.titolo;
-            document.getElementById('inAutore').value = s.autore;
-            document.getElementById('inTonalita').value = s.tonalita;
-            document.getElementById('inDurata').value = s.durata;
-            // Carica HTML se esiste, altrimenti il vecchio testo, altrimenti vuoto
-            document.getElementById('textContent').innerHTML = s.testoHTML || (s.testo ? s.testo.replace(/\n/g, '<br>') : "");
-        } else {
-            document.querySelectorAll('#editorPage input').forEach(i => i.value = '');
-            document.getElementById('textContent').innerHTML = "";
+            playlist.push(newSong);
+            saveData();
+            renderTable(playlist);
+            
+            // Pulisci input
+            document.getElementById('titleInput').value = '';
+            document.getElementById('authorInput').value = '';
         }
-    }
 
-    function deleteSong() {
-        if (currentSongId && confirm("Eliminare?")) {
-            db.ref('songs/' + currentSongId).remove();
-            closeEditor();
+        // Funzione per salvare i dati
+        function saveData() {
+            localStorage.setItem('myPlaylist', JSON.stringify(playlist));
         }
-    }
 
-    function closeEditor() {
-        document.getElementById('homePage').style.display = 'block';
-        document.getElementById('editorPage').style.display = 'none';
-    }
+        // Funzione per eliminare un brano
+        function deleteSong(id) {
+            playlist = playlist.filter(song => song.id !== id);
+            saveData();
+            sortAndRender();
+        }
 
-    loadSongs();
-</script>
+        // Funzione per ordinare e mostrare i dati
+        function sortAndRender() {
+            const criteria = document.getElementById('sortOrder').value;
+            let displayList = [...playlist]; // Copia per non alterare l'ordine originale se non necessario
+
+            if (criteria === 'title') {
+                displayList.sort((a, b) => a.title.localeCompare(b.title));
+            } else if (criteria === 'author') {
+                displayList.sort((a, b) => a.author.localeCompare(b.author));
+            }
+
+            renderTable(displayList);
+        }
+
+        // Funzione per renderizzare la tabella HTML
+        function renderTable(data) {
+            const body = document.getElementById('playlistBody');
+            body.innerHTML = '';
+
+            data.forEach((song, index) => {
+                const row = `<tr>
+                    <td>${index + 1}</td>
+                    <td>${song.title}</td>
+                    <td>${song.author}</td>
+                    <td><button onclick="deleteSong(${song.id})" style="background:#ff4444">Elimina</button></td>
+                </tr>`;
+                body.innerHTML += row;
+            });
+        }
+
+        // Funzione per scaricare il PDF (mantiene l'ordine attuale della tabella)
+        function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const criteria = document.getElementById('sortOrder').value;
+            
+            // Applichiamo lo stesso ordinamento scelto dall'utente
+            let printList = [...playlist];
+            if (criteria === 'title') printList.sort((a, b) => a.title.localeCompare(b.title));
+            if (criteria === 'author') printList.sort((a, b) => a.author.localeCompare(b.author));
+
+            doc.setFontSize(20);
+            doc.text("Elenco Brani Musicali", 20, 20);
+            doc.setFontSize(12);
+            doc.setTextColor(100);
+            doc.text(`Ordinamento: ${criteria}`, 20, 30);
+            
+            doc.setDrawColor(0);
+            doc.line(20, 35, 190, 35);
+
+            let y = 45;
+            doc.setTextColor(0);
+            
+            printList.forEach((song, index) => {
+                if (y > 280) {
+                    doc.addPage();
+                    y = 20;
+                }
+                doc.text(`${index + 1}. ${song.title.toUpperCase()}`, 20, y);
+                doc.text(`   Autore: ${song.author}`, 20, y + 7);
+                y += 15;
+            });
+
+            doc.save("mia-playlist.pdf");
+        }
+
+        // Inizializzazione al caricamento pagina
+        window.onload = () => renderTable(playlist);
+    </script>
 </body>
 </html>
