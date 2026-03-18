@@ -188,6 +188,15 @@
             justify-content: space-between;
             margin-top: 20px;
             padding-bottom: 40px;
+            align-items: center;
+        }
+
+        .credits {
+            text-align: right;
+            font-size: 10px;
+            color: #999;
+            margin-top: 10px;
+            font-style: italic;
         }
     </style>
 </head>
@@ -212,14 +221,24 @@
     <input type="text" id="searchBar" placeholder="Cerca una canzone..." onkeyup="renderSongs()">
     <button class="btn" style="width: 100%; margin-bottom: 20px; font-weight: bold;" onclick="openEditor()">+ INSERISCI NUOVO BRANO</button>
     <div id="songList"></div>
+    <div class="credits">created by Emilia</div>
 </div>
 
 <div id="editorPage">
-    <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-        <button class="btn" onclick="closeEditor()">← Indietro</button>
-        <a id="editorYtBtn" href="#" target="_blank" class="btn" style="background: var(--yt-red); display: none;">
-            Guarda su YouTube ▶️
-        </a>
+    <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; gap: 5px;">
+        <button class="btn" onclick="closeEditor()">← Esci</button>
+        
+        <div style="display: flex; gap: 8px;">
+            <button id="prevSongBtn" class="btn" style="background: #666; display: none;" onclick="goToPrevSong()">
+                ⏮️ Prec.
+            </button>
+            <a id="editorYtBtn" href="#" target="_blank" class="btn" style="background: var(--yt-red); display: none;">
+                YouTube ▶️
+            </a>
+            <button id="nextSongBtn" class="btn" style="background: #333; display: none;" onclick="goToNextSong()">
+                Pros. ⏭️
+            </button>
+        </div>
     </div>
 
     <div class="input-row">
@@ -242,6 +261,7 @@
         <button class="btn" style="background:#d9534f;" onclick="deleteSong()">Elimina</button>
         <button class="btn" style="background:#5cb85c; padding: 12px 40px;" onclick="saveSong()">SALVA</button>
     </div>
+    <div class="credits">created by Emilia</div>
 </div>
 
 <script>
@@ -386,9 +406,13 @@
         document.getElementById('editorPage').style.display = 'block';
         
         const ytBtn = document.getElementById('editorYtBtn');
+        const nextBtn = document.getElementById('nextSongBtn');
+        const prevBtn = document.getElementById('prevSongBtn');
 
         if (id) {
-            const s = songs.find(x => x.id === id);
+            const sIndex = songs.findIndex(x => x.id === id);
+            const s = songs[sIndex];
+            
             document.getElementById('inTitolo').value = s.titolo;
             document.getElementById('inAutore').value = s.autore;
             document.getElementById('inTonalita').value = s.tonalita;
@@ -396,17 +420,42 @@
             document.getElementById('inYoutube').value = s.youtube || "";
             document.getElementById('textContent').innerHTML = s.testoHTML || (s.testo ? s.testo.replace(/\n/g, '<br>') : "");
             
-            // Gestione tasto YouTube nell'editor
+            // Link YouTube
             if(s.youtube) {
                 ytBtn.href = s.youtube;
                 ytBtn.style.display = 'inline-flex';
             } else {
                 ytBtn.style.display = 'none';
             }
+
+            // Navigazione
+            prevBtn.style.display = (sIndex > 0) ? 'inline-flex' : 'none';
+            nextBtn.style.display = (sIndex < songs.length - 1) ? 'inline-flex' : 'none';
+
         } else {
             document.querySelectorAll('#editorPage input').forEach(i => i.value = '');
             document.getElementById('textContent').innerHTML = "";
             ytBtn.style.display = 'none';
+            nextBtn.style.display = 'none';
+            prevBtn.style.display = 'none';
+        }
+    }
+
+    function goToNextSong() {
+        if (!currentSongId) return;
+        const currentIndex = songs.findIndex(x => x.id === currentSongId);
+        if (currentIndex < songs.length - 1) {
+            openEditor(songs[currentIndex + 1].id);
+            document.getElementById('editorPage').scrollTo(0,0);
+        }
+    }
+
+    function goToPrevSong() {
+        if (!currentSongId) return;
+        const currentIndex = songs.findIndex(x => x.id === currentSongId);
+        if (currentIndex > 0) {
+            openEditor(songs[currentIndex - 1].id);
+            document.getElementById('editorPage').scrollTo(0,0);
         }
     }
 
