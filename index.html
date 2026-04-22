@@ -9,6 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <style>
         :root {
@@ -31,7 +32,7 @@
         .btn:active { opacity: 0.8; }
         .btn-small { padding: 8px 12px; font-size: 13px; background-color: #fdfdfd; color: var(--scuro); border: 1px solid #ccc; }
         .btn-pdf { background-color: #d9534f; color: white; }
-        .btn-csv { background-color: #28a745; color: white; }
+        .btn-xlsx { background-color: #28a745; color: white; }
         .song-card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; display: grid; grid-template-columns: 40px 2fr 1fr 1fr 40px 40px; gap: 10px; cursor: pointer; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .drag-handle { color: #ccc; cursor: grab; font-size: 24px; text-align: center; }
         .yt-link { color: var(--yt-red); font-size: 20px; text-decoration: none; display: flex; justify-content: center; align-items: center; }
@@ -64,7 +65,7 @@
         <button class="btn btn-small" onclick="ordinaAlfa()">A-Z Titolo</button>
         <button class="btn btn-small" onclick="ordinaAutore()">A-Z Autore</button>
         <button class="btn btn-small btn-pdf" onclick="scaricaPDF()">Scarica PDF</button>
-        <button class="btn btn-small btn-csv" onclick="scaricaElencoCSV()">Esporta Elenco (CSV)</button>
+        <button class="btn btn-small btn-xlsx" onclick="scaricaExcelFormattato()">Esporta Excel</button>
     </div>
 
     <input type="text" id="searchBar" placeholder="Cerca una canzone..." onkeyup="renderSongs()">
@@ -122,26 +123,17 @@
         document.getElementById('chordContent').classList.toggle('active', type === 'accordi');
     }
 
-    // NUOVA FUNZIONE PER ESPORTARE CSV
-    function scaricaElencoCSV() {
-        let csvContent = "data:text/csv;charset=utf-8,Titolo,Autore,Tonalita,Durata\n";
-        songs.forEach(s => {
-            let row = [
-                `"${s.titolo.replace(/"/g, '""')}"`,
-                `"${(s.autore || "").replace(/"/g, '""')}"`,
-                `"${(s.tonalita || "").replace(/"/g, '""')}"`,
-                `"${s.durata || 0}"`
-            ].join(",");
-            csvContent += row + "\n";
-        });
-
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "elenco_brani_trio.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    function scaricaExcelFormattato() {
+        const ws_data = [["Titolo", "Autore", "Tonalità", "Durata"]];
+        songs.forEach(s => { ws_data.push([s.titolo, s.autore, s.tonalita, parseFloat(s.durata) || 0]); });
+        
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(ws_data);
+        
+        ws['!cols'] = [{wch: 30}, {wch: 25}, {wch: 15}, {wch: 10}];
+        
+        XLSX.utils.book_append_sheet(wb, ws, "Scaletta");
+        XLSX.writeFile(wb, "Scaletta_tRIO.xlsx");
     }
 
     function scaricaPDF() {
@@ -152,7 +144,6 @@
 
         songs.forEach((s, index) => {
             if (index > 0) doc.addPage();
-            
             let y = margin;
             doc.setFont("helvetica", "bold"); doc.setFontSize(20);
             doc.text(s.titolo.toUpperCase(), margin, y);
@@ -168,7 +159,6 @@
                 y += 8;
                 doc.setFont("helvetica", "normal");
                 let text = html.replace(/<br\s*[\/]?>/gi, "\n").replace(/<\/?[^>]+(>|$)/g, "");
-                
                 const lines = doc.splitTextToSize(text, pageWidth);
                 lines.forEach(line => {
                     if (y > 280) { doc.addPage(); y = margin; }
@@ -272,11 +262,11 @@
     function goToNextSong() { const idx = songs.findIndex(x => x.id === currentSongId); if (idx < songs.length - 1) openEditor(songs[idx + 1].id); }
     function goToPrevSong() { const idx = songs.findIndex(x => x.id === currentSongId); if (idx > 0) openEditor(songs[idx - 1].id); }
     function deleteSong() { if (currentSongId && confirm("Eliminare?")) { db.ref('songs/' + currentSongId).remove(); closeEditor(); } }
-    loadSongs();
     
-    // Funzioni di ordinamento (non toccate)
     function ordinaAlfa() { songs.sort((a, b) => a.titolo.localeCompare(b.titolo)); saveNewOrder(); renderSongs(); }
     function ordinaAutore() { songs.sort((a, b) => a.autore.localeCompare(b.autore)); saveNewOrder(); renderSongs(); }
+
+    loadSongs();
 </script>
 </body>
 </html>
