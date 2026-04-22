@@ -317,7 +317,6 @@
         onEnd: () => saveNewOrder()
     });
 
-    // Funzione per switchare le schede
     function switchTab(type) {
         document.getElementById('tabTesto').classList.remove('active');
         document.getElementById('tabAccordi').classList.remove('active');
@@ -343,24 +342,59 @@
         renderSongs();
     }
 
+    function pulisciHTML(html) {
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+        return temp.innerText || temp.textContent || "";
+    }
+
     function scaricaPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
+        
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(18);
-        doc.text("SCALETTA - tRIO", 105, 15, { align: "center" });
+        doc.setFontSize(20);
+        doc.text("SCALETTA COMPLETA - tRIO", 105, 20, { align: "center" });
+        
         let y = 35;
-        doc.setFontSize(12);
+        
         songs.forEach((s, i) => {
-            if (y > 280) { doc.addPage(); y = 20; }
+            if (y > 270) {
+                doc.addPage();
+                y = 20;
+            }
+            
+            doc.setFontSize(14);
             doc.setFont("helvetica", "bold");
-            doc.text(`${i + 1}. ${s.titolo.toUpperCase()}`, 20, y);
+            doc.text(`${i + 1}. ${s.titolo.toUpperCase()} - ${s.autore}`, 20, y);
+            y += 7;
+            
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "italic");
+            doc.text(`Tonalità: ${s.tonalita} | Durata: ${s.durata}'`, 20, y);
+            y += 8;
+            
             doc.setFont("helvetica", "normal");
-            doc.text(`${s.autore} (${s.tonalita}) - ${s.durata}'`, 130, y);
-            doc.line(20, y + 2, 190, y + 2);
+            const testoPulito = pulisciHTML(s.testoHTML || "");
+            const accordiPuliti = pulisciHTML(s.accordiHTML || "");
+            
+            const splitText = doc.splitTextToSize("TESTO: " + testoPulito, 170);
+            doc.text(splitText, 20, y);
+            y += (splitText.length * 5) + 5;
+            
+            if(accordiPuliti.trim() !== "") {
+                const splitAccordi = doc.splitTextToSize("ACCORDI: " + accordiPuliti, 170);
+                doc.text(splitAccordi, 20, y);
+                y += (splitAccordi.length * 5) + 10;
+            } else {
+                y += 5;
+            }
+            
+            doc.line(20, y, 190, y);
             y += 10;
         });
-        doc.save("scaletta-trio.pdf");
+        
+        doc.save("scaletta-trio-completa.pdf");
     }
 
     function applyHighlight(color) {
@@ -446,7 +480,7 @@
             durata: document.getElementById('inDurata').value.toString().replace(',', '.') || 0,
             youtube: document.getElementById('inYoutube').value || "",
             testoHTML: document.getElementById('textContent').innerHTML,
-            accordiHTML: document.getElementById('chordContent').innerHTML, // Nuovo campo salvato
+            accordiHTML: document.getElementById('chordContent').innerHTML,
             ordine: currentSongId ? (songs.find(x => x.id === currentSongId).ordine || 0) : songs.length
         };
         if (currentSongId) db.ref('songs/' + currentSongId).update(songData);
@@ -459,7 +493,6 @@
         document.getElementById('homePage').style.display = 'none';
         document.getElementById('editorPage').style.display = 'block';
         
-        // Reset alla scheda Testo ogni volta che si apre
         switchTab('testo');
 
         const ytBtn = document.getElementById('editorYtBtn');
@@ -475,8 +508,8 @@
             document.getElementById('inTonalita').value = s.tonalita;
             document.getElementById('inDurata').value = s.durata;
             document.getElementById('inYoutube').value = s.youtube || "";
-            document.getElementById('textContent').innerHTML = s.testoHTML || (s.testo ? s.testo.replace(/\n/g, '<br>') : "");
-            document.getElementById('chordContent').innerHTML = s.accordiHTML || ""; // Caricamento accordi
+            document.getElementById('textContent').innerHTML = s.testoHTML || "";
+            document.getElementById('chordContent').innerHTML = s.accordiHTML || "";
             
             if(s.youtube) {
                 ytBtn.href = s.youtube;
