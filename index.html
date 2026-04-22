@@ -122,27 +122,40 @@
 
     function scaricaPDF() {
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        
+        const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+        const margin = 20;
+        const pageWidth = 210 - (margin * 2);
+
         songs.forEach((s, index) => {
             if (index > 0) doc.addPage();
-            doc.setFont("helvetica", "bold"); doc.setFontSize(20);
-            doc.text(s.titolo.toUpperCase(), 20, 20);
-            doc.setFontSize(12); doc.setFont("helvetica", "italic");
-            doc.text(`Autore: ${s.autore} | Tonalità: ${s.tonalita} | Durata: ${s.durata}'`, 20, 30);
-            doc.line(20, 35, 190, 35);
             
-            const stampaContenuto = (html, y, titolo) => {
-                doc.setFont("helvetica", "bold"); doc.text(titolo, 20, y);
+            let y = margin;
+            doc.setFont("helvetica", "bold"); doc.setFontSize(20);
+            doc.text(s.titolo.toUpperCase(), margin, y);
+            y += 10;
+            doc.setFontSize(12); doc.setFont("helvetica", "italic");
+            doc.text(`Autore: ${s.autore} | Tonalità: ${s.tonalita} | Durata: ${s.durata}'`, margin, y);
+            y += 5;
+            doc.line(margin, y, 210 - margin, y);
+            y += 10;
+            
+            const renderBlock = (html, label) => {
+                doc.setFont("helvetica", "bold"); doc.text(label, margin, y);
+                y += 8;
                 doc.setFont("helvetica", "normal");
                 let text = html.replace(/<br\s*[\/]?>/gi, "\n").replace(/<\/?[^>]+(>|$)/g, "");
-                const lines = doc.splitTextToSize(text, 170);
-                doc.text(lines, 20, y + 10);
-                return y + (lines.length * 7) + 20;
+                
+                const lines = doc.splitTextToSize(text, pageWidth);
+                lines.forEach(line => {
+                    if (y > 280) { doc.addPage(); y = margin; }
+                    doc.text(line, margin, y);
+                    y += 7;
+                });
+                y += 5;
             };
 
-            let nextY = stampaContenuto(s.testoHTML || "", 45, "TESTO:");
-            if (s.accordiHTML && s.accordiHTML.trim() !== "") stampaContenuto(s.accordiHTML, nextY, "ACCORDI:");
+            renderBlock(s.testoHTML || "", "TESTO:");
+            if (s.accordiHTML && s.accordiHTML.trim() !== "") renderBlock(s.accordiHTML, "ACCORDI:");
         });
         doc.save("scaletta-trio.pdf");
     }
